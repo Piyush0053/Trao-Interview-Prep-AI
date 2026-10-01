@@ -61,28 +61,29 @@ export default function EditableField({ initialValue, isTextArea, onSave }: Edit
 
   if (!isEditing) {
     return (
-      <div className="group relative pr-10">
-        <div className="text-textMuted leading-relaxed whitespace-pre-wrap text-lg">
-          {value || <span className="italic opacity-50">Empty</span>}
+      <div className="group relative pr-8">
+        <div className="text-textSecondary leading-relaxed whitespace-pre-wrap text-sm">
+          {value || <span className="italic opacity-40 text-textMuted">Empty — click pencil to edit</span>}
         </div>
-        <button 
+        <button
           onClick={() => setIsEditing(true)}
-          className="absolute right-0 top-0 p-2.5 rounded-xl opacity-0 group-hover:opacity-100 hover:bg-white/10 transition-all text-textMuted hover:text-white"
+          className="absolute right-0 top-0 p-1.5 rounded-md opacity-0 group-hover:opacity-100 hover:bg-surfaceHighlight transition-all text-textMuted hover:text-primary"
+          aria-label="Edit field"
         >
-          <Pencil className="w-4 h-4" />
+          <Pencil className="w-3.5 h-3.5" />
         </button>
       </div>
     );
   }
 
   return (
-    <div className="relative animate-fade-in space-y-4">
+    <div className="relative animate-fade-in space-y-3">
       {isTextArea ? (
         <textarea
           ref={inputRef}
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          className="input-field min-h-[150px] resize-y w-full font-sans leading-relaxed text-lg"
+          className="input-field min-h-[120px] resize-y w-full text-sm leading-relaxed"
         />
       ) : (
         <input
@@ -90,27 +91,34 @@ export default function EditableField({ initialValue, isTextArea, onSave }: Edit
           type="text"
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          className="input-field w-full font-sans text-lg"
+          className="input-field w-full text-sm"
         />
       )}
-      
-      <div className="flex items-center justify-end gap-3">
-        {status === "error" && <span className="text-red-400 text-sm mr-auto font-medium">Failed to save</span>}
-        {status === "saved" && <span className="text-green-400 text-sm mr-auto flex items-center gap-1 font-medium"><Check className="w-4 h-4" /> Saved</span>}
-        
-        <button 
+
+      <div className="flex items-center justify-end gap-2">
+        {status === "error" && (
+          <span className="text-red-400 text-xs mr-auto font-medium flex items-center gap-1">
+            Failed to save
+          </span>
+        )}
+        {status === "saved" && (
+          <span className="text-green-400 text-xs mr-auto flex items-center gap-1 font-medium">
+            <Check className="w-3.5 h-3.5" /> Saved
+          </span>
+        )}
+        <button
           onClick={handleCancel}
           disabled={status === "saving"}
-          className="btn-ghost px-4 py-2 text-sm flex items-center gap-1.5"
+          className="btn-ghost px-3 py-1.5 text-xs gap-1"
         >
-          <X className="w-4 h-4" /> Cancel
+          <X className="w-3.5 h-3.5" /> Cancel
         </button>
-        <button 
+        <button
           onClick={handleSave}
           disabled={status === "saving"}
-          className="btn-primary px-5 py-2 text-sm flex items-center gap-2"
+          className="btn-primary px-4 py-1.5 text-xs gap-1.5"
         >
-          {status === "saving" ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Changes"}
+          {status === "saving" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <><Check className="w-3.5 h-3.5" /> Save</>}
         </button>
       </div>
     </div>

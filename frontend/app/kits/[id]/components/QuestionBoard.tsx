@@ -51,77 +51,80 @@ function SortableQuestionItem({
     zIndex: isDragging ? 10 : 1,
   };
 
+  const catGradient: Record<string, string> = {
+    technical:     'card-gradient-technical',
+    behavioural:   'card-gradient-behavioural',
+    'system-design': 'card-gradient-system-design',
+    'company-fit': 'card-gradient-company-fit',
+  };
+  const diffBadge = question.difficulty === 3 ? 'badge-red' : question.difficulty === 2 ? 'badge-amber' : 'badge-green';
+
   return (
-    <div 
-      ref={setNodeRef} 
-      style={style} 
-      className={`glass-card p-6 mb-5 flex gap-5 items-start group relative ${isDragging ? 'opacity-80 ring-2 ring-primary shadow-2xl scale-[1.02]' : ''}`}
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`card-gradient mb-4 group relative transition-all duration-200
+        ${isDragging ? 'opacity-80 ring-2 ring-primary shadow-glow-cyan scale-[1.01]' : ''}`}
     >
-      <div className="flex flex-col items-center gap-1">
-        <div 
-          {...attributes} 
-          {...listeners}
-          className="p-1 rounded-md cursor-grab active:cursor-grabbing text-textMuted opacity-30 group-hover:opacity-100 hover:bg-white/10 hover:text-white transition-all focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-primary"
-          aria-label="Drag to reorder"
-          tabIndex={0}
-        >
-          <GripVertical className="w-5 h-5" />
+      {/* Gradient header */}
+      <div className={`card-gradient-header ${catGradient[question.category || ''] || 'card-gradient-technical'} flex items-center justify-between`}>
+        <div className="flex items-center gap-2">
+          {/* Drag handle */}
+          <div
+            {...attributes}
+            {...listeners}
+            className="cursor-grab active:cursor-grabbing text-white/60 hover:text-white focus:outline-none focus-visible:ring-1 focus-visible:ring-white"
+            aria-label="Drag to reorder"
+            tabIndex={0}
+          >
+            <GripVertical className="w-4 h-4" />
+          </div>
+          <span className="text-xs font-semibold uppercase tracking-wider">{question.category}</span>
         </div>
-        <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-          <button 
+        <div className="flex items-center gap-2">
+          <span className={`${diffBadge} text-[10px]`}>{question.difficulty}/3</span>
+          {/* Arrow reorder buttons */}
+          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+              type="button"
+              onClick={() => onMove(question.id, 'up')}
+              disabled={index === 0}
+              className="p-1 rounded bg-white/10 hover:bg-white/20 text-white/70 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed focus:outline-none"
+              aria-label="Move up"
+            >↑</button>
+            <button
+              type="button"
+              onClick={() => onMove(question.id, 'down')}
+              disabled={index === total - 1}
+              className="p-1 rounded bg-white/10 hover:bg-white/20 text-white/70 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed focus:outline-none"
+              aria-label="Move down"
+            >↓</button>
+          </div>
+          <button
             type="button"
-            onClick={() => onMove(question.id, 'up')}
-            disabled={index === 0}
-            className="p-1 rounded bg-white/5 hover:bg-white/10 text-textMuted hover:text-white disabled:opacity-30 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-primary"
-            aria-label="Move question up"
-            title="Move up"
+            onClick={() => onDelete(question.id)}
+            className="p-1.5 rounded bg-white/10 hover:bg-red-500/40 text-white/70 hover:text-white focus:outline-none transition-colors"
+            aria-label="Delete question"
           >
-            ↑
-          </button>
-          <button 
-            type="button"
-            onClick={() => onMove(question.id, 'down')}
-            disabled={index === total - 1}
-            className="p-1 rounded bg-white/5 hover:bg-white/10 text-textMuted hover:text-white disabled:opacity-30 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-primary"
-            aria-label="Move question down"
-            title="Move down"
-          >
-            ↓
+            <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
-      <div className="flex-grow space-y-3">
-        <div className="flex justify-between items-start">
-          <div className="flex items-center gap-3">
-            <span className="inline-flex items-center px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-semibold text-textMuted uppercase tracking-wider shadow-inner shadow-white/5">
-              {question.category}
-            </span>
-            <span className="text-xs text-textMain font-medium flex items-center gap-1 bg-surfaceHighlight px-3 py-1 rounded-full border border-borderSubtle">
-              Difficulty: <span className="text-primary">{question.difficulty}/3</span>
-            </span>
-          </div>
-          <button 
-            type="button"
-            onClick={() => onDelete(question.id)}
-            className="p-1.5 rounded bg-white/5 hover:bg-red-500/20 text-textMuted hover:text-red-400 focus:outline-none transition-colors"
-            aria-label="Delete question"
-            title="Delete"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-        </div>
+
+      {/* Body */}
+      <div className="p-4 space-y-3">
         <div className="w-full">
-          <EditableField 
-            initialValue={question.prompt || ""}
+          <EditableField
+            initialValue={question.prompt || ''}
             field="prompt"
             kitId=""
             onSave={(val) => onEdit(question.id, 'prompt', val)}
           />
         </div>
-        <div className="p-4 rounded-xl bg-black/30 border border-borderSubtle shadow-inner">
-          <span className="font-semibold text-textMain block mb-1.5 uppercase text-xs tracking-wider opacity-70">Answer Outline</span>
-          <EditableField 
-            initialValue={question.answer_outline || ""}
+        <div className="p-3 rounded-lg bg-surfaceHighlight border border-borderSubtle">
+          <span className="text-[10px] font-bold text-textMuted uppercase tracking-wider block mb-1.5">Answer Outline</span>
+          <EditableField
+            initialValue={question.answer_outline || ''}
             field="answer_outline"
             kitId=""
             isTextArea
@@ -243,85 +246,92 @@ export default function QuestionBoard({ initialQuestions, kitId }: { initialQues
   };
 
   return (
-    <div className="max-w-4xl mx-auto animate-fade-in space-y-6">
-      
+    <div className="w-full animate-fade-in space-y-4">
+
       <div className="flex justify-end">
-        <button 
-          onClick={() => setIsAdding(!isAdding)} 
-          className="btn-primary text-sm py-2 px-4 flex items-center gap-2"
+        <button
+          onClick={() => setIsAdding(!isAdding)}
+          className="btn-secondary text-xs py-2 gap-2"
         >
-          {isAdding ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+          {isAdding ? <X className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
           {isAdding ? 'Cancel' : 'Add Custom Question'}
         </button>
       </div>
 
       {isAdding && (
-        <form onSubmit={handleAddQuestion} className="glass-card p-6 border border-primary/30 animate-fade-in space-y-4">
-          <h3 className="text-lg font-bold">Add Manual Question</h3>
-          <p className="text-sm text-textMuted mb-4">Custom questions are pinned and will not be lost when you regenerate the AI question bank.</p>
-          
-          <div className="grid md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-semibold mb-2 text-textMuted uppercase tracking-wider">Category</label>
-              <select 
-                value={newQuestion.category}
-                onChange={e => setNewQuestion({...newQuestion, category: e.target.value})}
-                className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white focus:ring-2 focus:ring-primary focus:outline-none"
-              >
-                <option value="technical">Technical</option>
-                <option value="behavioural">Behavioural</option>
-                <option value="system-design">System Design</option>
-                <option value="company-fit">Company Fit</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-semibold mb-2 text-textMuted uppercase tracking-wider">Difficulty (1-3)</label>
-              <select 
-                value={newQuestion.difficulty}
-                onChange={e => setNewQuestion({...newQuestion, difficulty: parseInt(e.target.value)})}
-                className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white focus:ring-2 focus:ring-primary focus:outline-none"
-              >
-                <option value={1}>1 - Beginner</option>
-                <option value={2}>2 - Intermediate</option>
-                <option value={3}>3 - Advanced</option>
-              </select>
-            </div>
+        <form onSubmit={handleAddQuestion} className="panel border border-primary/25 animate-fade-in overflow-hidden">
+          <div className="card-gradient-header card-gradient-technical flex items-center gap-2">
+            <Plus className="w-4 h-4 text-white/80" />
+            Add Custom Question
           </div>
-          
-          <div>
-            <label className="block text-sm font-semibold mb-2 text-textMuted uppercase tracking-wider">Question Prompt</label>
-            <textarea 
-              required
-              value={newQuestion.prompt}
-              onChange={e => setNewQuestion({...newQuestion, prompt: e.target.value})}
-              placeholder="e.g. How does React's virtual DOM work?"
-              className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white focus:ring-2 focus:ring-primary focus:outline-none min-h-[80px]"
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-semibold mb-2 text-textMuted uppercase tracking-wider">Answer Outline / Key Points</label>
-            <textarea 
-              required
-              value={newQuestion.answer_outline}
-              onChange={e => setNewQuestion({...newQuestion, answer_outline: e.target.value})}
-              placeholder="Key concepts to cover in the answer..."
-              className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white focus:ring-2 focus:ring-primary focus:outline-none min-h-[80px]"
-            />
-          </div>
+          <div className="p-5 space-y-4">
+            <p className="text-xs text-textSecondary">Custom questions are <strong className="text-primary">pinned</strong> and survive AI regeneration.</p>
 
-          <div className="flex justify-end pt-2">
-            <button type="submit" className="btn-primary">Save Question</button>
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div>
+                <label className="label">Category</label>
+                <select
+                  value={newQuestion.category}
+                  onChange={e => setNewQuestion({...newQuestion, category: e.target.value})}
+                  className="input-select"
+                >
+                  <option value="technical">Technical</option>
+                  <option value="behavioural">Behavioural</option>
+                  <option value="system-design">System Design</option>
+                  <option value="company-fit">Company Fit</option>
+                </select>
+              </div>
+              <div>
+                <label className="label">Difficulty</label>
+                <select
+                  value={newQuestion.difficulty}
+                  onChange={e => setNewQuestion({...newQuestion, difficulty: parseInt(e.target.value)})}
+                  className="input-select"
+                >
+                  <option value={1}>1 — Beginner</option>
+                  <option value={2}>2 — Intermediate</option>
+                  <option value={3}>3 — Advanced</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="label">Question Prompt</label>
+              <textarea
+                required
+                value={newQuestion.prompt}
+                onChange={e => setNewQuestion({...newQuestion, prompt: e.target.value})}
+                placeholder="e.g. How does React's virtual DOM work?"
+                className="input-field min-h-[80px]"
+              />
+            </div>
+
+            <div>
+              <label className="label">Answer Outline / Key Points</label>
+              <textarea
+                required
+                value={newQuestion.answer_outline}
+                onChange={e => setNewQuestion({...newQuestion, answer_outline: e.target.value})}
+                placeholder="Key concepts to cover in the answer…"
+                className="input-field min-h-[80px]"
+              />
+            </div>
+
+            <div className="flex justify-end">
+              <button type="submit" className="btn-primary text-sm gap-2">
+                <BrainCircuit className="w-4 h-4" /> Save Question
+              </button>
+            </div>
           </div>
         </form>
       )}
 
       {questions.length === 0 ? (
-        <div className="text-center py-20">
-          <div className="w-20 h-20 rounded-3xl bg-white/5 mx-auto flex items-center justify-center mb-6">
-            <BrainCircuit className="w-10 h-10 text-textMuted opacity-50" />
+        <div className="text-center py-16">
+          <div className="w-14 h-14 rounded-xl bg-surfaceHighlight mx-auto flex items-center justify-center mb-4 border border-borderStrong">
+            <BrainCircuit className="w-7 h-7 text-textMuted/50" />
           </div>
-          <p className="text-textMuted text-lg">No questions generated yet.</p>
+          <p className="text-sm text-textMuted">No questions generated yet.</p>
         </div>
       ) : (
         <DndContext 

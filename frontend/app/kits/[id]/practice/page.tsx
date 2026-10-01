@@ -1,13 +1,13 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
-import { ArrowLeft, RefreshCcw, Sparkles, CheckCircle } from "lucide-react";
+import { ArrowLeft, RotateCcw, Sparkles, CheckCircle2, Trophy } from "lucide-react";
 import Link from "next/link";
 
 export default function PracticeSession() {
   const params = useParams();
   const searchParams = useSearchParams();
-  const dayParam = searchParams.get('day');
+  const dayParam = searchParams.get("day");
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [kit, setKit] = useState<any>(null);
@@ -16,6 +16,7 @@ export default function PracticeSession() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [sessionCompleted, setSessionCompleted] = useState(false);
+  const [scores, setScores] = useState<Record<number, number>>({});
   const router = useRouter();
 
   useEffect(() => {
@@ -27,18 +28,16 @@ export default function PracticeSession() {
           let targetCards = data.flashcards;
           if (dayParam && data.schedule?.days && data.questions) {
             const dayNum = parseInt(dayParam, 10);
-            const dayObj = data.schedule.days.find((d: { day: number, question_ids?: string[] }) => d.day === dayNum);
+            const dayObj = data.schedule.days.find((d: { day: number; question_ids?: string[] }) => d.day === dayNum);
             if (dayObj) {
               const dayReqIds = new Set<string>();
-              const dayQuestions = data.questions.filter((q: { id: string, requirement_ids?: string[] }) => (dayObj.question_ids || []).includes(q.id));
-              for (const q of dayQuestions) {
-                for (const rid of (q.requirement_ids || [])) {
+              const dayQs = data.questions.filter((q: { id: string; requirement_ids?: string[] }) =>
+                (dayObj.question_ids || []).includes(q.id));
+              for (const q of dayQs)
+                for (const rid of (q.requirement_ids || []))
                   dayReqIds.add(rid);
-                }
-              }
-              targetCards = data.flashcards.filter((fc: { requirement_ids?: string[] }) => 
-                fc.requirement_ids?.some((rid: string) => dayReqIds.has(rid))
-              );
+              targetCards = data.flashcards.filter((fc: { requirement_ids?: string[] }) =>
+                fc.requirement_ids?.some((rid: string) => dayReqIds.has(rid)));
             }
           }
           setCards(targetCards);
@@ -48,124 +47,197 @@ export default function PracticeSession() {
 
   if (!kit || cards.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[80vh] text-textMuted">
-        <RefreshCcw className="w-10 h-10 animate-spin mb-4 text-primary" />
-        <p className="text-lg">Loading flashcards...</p>
+      <div className="flex flex-col items-center justify-center min-h-[70vh] gap-4">
+        <div className="w-8 h-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
+        <p className="text-sm text-textMuted">Loading flashcards…</p>
       </div>
     );
   }
 
   const handleConfidence = (level: 1 | 2 | 3) => {
     const confidenceMap = { 1: 1, 2: 3, 3: 5 };
-    const mappedConfidence = confidenceMap[level];
+    setScores(prev => ({ ...prev, [currentIndex]: level }));
 
     fetch(`/api/practice/${params.id}/review`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ flashcardId: currentCard.id, confidence: mappedConfidence })
+      body: JSON.stringify({ flashcardId: currentCard.id, confidence: confidenceMap[level] })
     }).catch(console.error);
 
     setIsFlipped(false);
     setTimeout(() => {
-      if (currentIndex === cards.length - 1) {
-        setSessionCompleted(true);
-      } else {
-        setCurrentIndex(prev => prev + 1);
-      }
-    }, 150);
+      if (currentIndex === cards.length - 1) setSessionCompleted(true);
+      else setCurrentIndex(prev => prev + 1);
+    }, 200);
   };
 
+  /* ── Session complete screen ── */
   if (sessionCompleted) {
+    const easyCount   = Object.values(scores).filter(s => s === 3).length;
+    const mediumCount = Object.values(scores).filter(s => s === 2).length;
+    const hardCount   = Object.values(scores).filter(s => s === 1).length;
+    const score       = Math.round((easyCount * 5 + mediumCount * 3 + hardCount * 1) / (cards.length * 5) * 100);
+
     return (
-      <div className="flex flex-col items-center justify-center min-h-[80vh] text-center animate-fade-in">
-        <div className="w-24 h-24 rounded-full bg-green-500/20 flex items-center justify-center mb-6 border border-green-500/30">
-          <CheckCircle className="w-12 h-12 text-green-400" />
+      <div className="flex flex-col items-center justify-center min-h-[80vh] text-center px-6 animate-fade-in">
+        <div className="w-20 h-20 rounded-2xl bg-gradient-primary flex items-center justify-center mb-6 shadow-glow-cyan">
+          <Trophy className="w-10 h-10 text-[#0d1117]" />
         </div>
-        <h2 className="text-3xl font-bold mb-4">Session Complete!</h2>
-        <p className="text-textMuted text-lg mb-8 max-w-md">
-          Great job! Your readiness matrix has been updated with your latest scores.
-        </p>
-        <button onClick={() => router.push(`/kits/${params.id}`)} className="btn-primary px-8 py-3">
-          Back to Kit
-        </button>
+        <h1 className="font-display text-3xl font-bold text-textMain mb-2">Session Complete!</h1>
+        <p className="text-textSecondary text-sm mb-8">Your readiness matrix has been updated.</p>
+
+        {/* Score breakdown */}
+        <div className="panel p-6 mb-8 w-full max-w-sm">
+          <div className="text-center mb-5">
+            <div className="font-display text-5xl font-bold text-primary">{score}%</div>
+            <div className="text-xs text-textMuted mt-1">Overall confidence score</div>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { label: "Easy",   count: easyCount,   cls: "text-success",  bg: "bg-success/10" },
+              { label: "Medium", count: mediumCount,  cls: "text-warning",  bg: "bg-warning/10" },
+              { label: "Hard",   count: hardCount,    cls: "text-red-400",  bg: "bg-accent/10"  },
+            ].map(s => (
+              <div key={s.label} className={`${s.bg} rounded-lg p-3 text-center`}>
+                <div className={`text-2xl font-display font-bold ${s.cls}`}>{s.count}</div>
+                <div className="text-xs text-textMuted">{s.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-3">
+          <button
+            onClick={() => { setCurrentIndex(0); setIsFlipped(false); setSessionCompleted(false); setScores({}); }}
+            className="btn-secondary gap-2"
+          >
+            <RotateCcw className="w-4 h-4" /> Practice Again
+          </button>
+          <button onClick={() => router.push(`/kits/${params.id}`)} className="btn-primary gap-2">
+            <Sparkles className="w-4 h-4" /> Back to Kit
+          </button>
+        </div>
       </div>
     );
   }
 
   const currentCard = cards[currentIndex];
-  const progress = ((currentIndex) / cards.length) * 100;
+  const progress    = (currentIndex / cards.length) * 100;
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-12 animate-fade-in relative z-10">
-      <div className="flex items-center justify-between mb-8">
-        <Link href={`/kits/${params.id}`} className="btn-ghost flex items-center gap-2 pl-0 hover:bg-transparent text-textMuted hover:text-white font-medium">
-          <ArrowLeft className="w-5 h-5" /> Back to Kit
+    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8 animate-fade-in relative z-10 flex flex-col min-h-[85vh]">
+
+      {/* Top bar */}
+      <div className="flex items-center justify-between mb-6">
+        <Link href={`/kits/${params.id}`} className="btn-ghost gap-2 text-sm pl-0">
+          <ArrowLeft className="w-4 h-4" /> Back to Kit
         </Link>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           {dayParam && (
-            <span className="text-primary font-bold tracking-wide">Day {dayParam} Practice</span>
+            <span className="badge-cyan text-xs">Day {dayParam}</span>
           )}
-          <div className="inline-flex items-center px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-sm font-medium shadow-inner shadow-white/5">
-            Card {currentIndex + 1} of {cards.length}
-          </div>
+          <span className="badge-gray text-xs">
+            {currentIndex + 1} / {cards.length}
+          </span>
         </div>
       </div>
 
-      <div className="w-full h-1.5 bg-surfaceHighlight rounded-full mb-12 overflow-hidden shadow-inner">
-        <div className="h-full bg-gradient-primary transition-all duration-500 ease-out" style={{ width: `${progress}%` }} />
+      {/* Progress bar */}
+      <div className="mb-8">
+        <div className="flex justify-between text-xs text-textMuted mb-1.5">
+          <span>Progress</span>
+          <span className="text-primary font-semibold">{Math.round(progress)}%</span>
+        </div>
+        <div className="h-1.5 bg-surfaceHighlight rounded-full overflow-hidden">
+          <div
+            className="h-full bg-gradient-primary transition-all duration-500 ease-out rounded-full"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+        {/* Dots */}
+        <div className="flex gap-1 mt-2 justify-center">
+          {cards.map((_, i) => {
+            const s = scores[i];
+            return (
+              <div key={i} className={`h-1 rounded-full transition-all duration-300
+                ${i === currentIndex ? "w-4 bg-primary" :
+                  s === 3 ? "w-2 bg-success" :
+                  s === 2 ? "w-2 bg-warning" :
+                  s === 1 ? "w-2 bg-red-400" :
+                  "w-2 bg-surfaceHighlight"}`}
+              />
+            );
+          })}
+        </div>
       </div>
 
-      <div className="relative perspective-1000 h-[450px] mb-12 cursor-pointer group" onClick={() => setIsFlipped(!isFlipped)}>
-        <div className={`w-full h-full absolute top-0 left-0 transition-transform duration-700 transform-style-3d ease-[cubic-bezier(0.23,1,0.32,1)] ${isFlipped ? 'rotate-y-180' : ''}`}>
-          
-          {/* Front */}
-          <div className="absolute top-0 left-0 w-full h-full backface-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] rounded-3xl">
-            <div className="glass-panel w-full h-full p-12 flex flex-col items-center justify-center text-center hover:border-primary/40 transition-colors border-2">
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold uppercase tracking-widest mb-8">
+      {/* 3D Flashcard */}
+      <div
+        className="flex-1 relative perspective-1000 cursor-pointer mb-8"
+        style={{ minHeight: "320px" }}
+        onClick={() => setIsFlipped(v => !v)}
+        role="button"
+        aria-label={isFlipped ? "Show question" : "Show answer"}
+        tabIndex={0}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setIsFlipped(v => !v); }}
+      >
+        <div className={`w-full h-full absolute inset-0 transition-transform duration-700 transform-style-3d ease-[cubic-bezier(0.23,1,0.32,1)] ${isFlipped ? "rotate-y-180" : ""}`}>
+
+          {/* Front — Question */}
+          <div className="absolute inset-0 backface-hidden">
+            <div className="w-full h-full panel flex flex-col items-center justify-center text-center p-8 hover:border-borderStrong transition-colors">
+              <div className="badge-cyan mb-6 text-xs uppercase tracking-widest py-1 px-4">
                 Question
               </div>
-              <h2 className="text-2xl md:text-4xl font-bold leading-tight">
+              <h2 className="font-display text-xl sm:text-2xl font-bold text-textMain leading-tight mb-8">
                 {currentCard.front}
               </h2>
-              <p className="text-textMuted mt-12 flex items-center gap-2 opacity-50 group-hover:opacity-100 transition-opacity font-medium">
-                Click to flip <RefreshCcw className="w-4 h-4" />
+              <div className="flex items-center gap-2 text-textMuted text-xs opacity-60">
+                <RotateCcw className="w-3.5 h-3.5" />
+                Click or press Enter to reveal answer
+              </div>
+            </div>
+          </div>
+
+          {/* Back — Answer */}
+          <div className="absolute inset-0 backface-hidden rotate-y-180">
+            <div className="w-full h-full panel flex flex-col items-center justify-center text-center p-8 bg-surfaceHover border-primary/20">
+              <div className="badge-blue mb-6 text-xs uppercase tracking-widest py-1 px-4 flex items-center gap-1.5">
+                <CheckCircle2 className="w-3 h-3" /> Answer
+              </div>
+              <p className="text-textMain text-base sm:text-lg leading-relaxed font-medium max-w-prose">
+                {currentCard.back}
               </p>
             </div>
           </div>
 
-          {/* Back */}
-          <div className="absolute top-0 left-0 w-full h-full backface-hidden rotate-y-180 shadow-[0_20px_50px_rgba(0,0,0,0.5)] rounded-3xl">
-            <div className="glass-panel w-full h-full p-12 flex flex-col items-center justify-center text-center hover:border-secondary/40 transition-colors border-2 bg-surfaceHighlight/50">
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-secondary/10 border border-secondary/20 text-secondary text-xs font-bold uppercase tracking-widest mb-8">
-                Answer <Sparkles className="w-3 h-3" />
-              </div>
-              <div className="prose prose-invert max-w-none w-full">
-                <p className="text-xl text-textMain leading-relaxed font-medium">
-                  {currentCard.back}
-                </p>
-              </div>
-            </div>
-          </div>
-
         </div>
       </div>
 
-      {isFlipped && (
-        <div className="animate-slide-up flex flex-col items-center">
-          <p className="text-textMuted mb-5 font-medium tracking-wide">How well did you know this?</p>
-          <div className="flex gap-4 w-full sm:w-auto">
-            <button onClick={(e) => { e.stopPropagation(); handleConfidence(1); }} className="flex-1 sm:flex-none px-8 py-4 rounded-xl bg-red-500/10 text-red-400 font-bold border border-red-500/20 hover:bg-red-500/20 hover:shadow-lg hover:shadow-red-500/10 transition-all active:scale-[0.98]">
-              Again (Hard)
-            </button>
-            <button onClick={(e) => { e.stopPropagation(); handleConfidence(2); }} className="flex-1 sm:flex-none px-8 py-4 rounded-xl bg-yellow-500/10 text-yellow-400 font-bold border border-yellow-500/20 hover:bg-yellow-500/20 hover:shadow-lg hover:shadow-yellow-500/10 transition-all active:scale-[0.98]">
-              Good
-            </button>
-            <button onClick={(e) => { e.stopPropagation(); handleConfidence(3); }} className="flex-1 sm:flex-none px-8 py-4 rounded-xl bg-green-500/10 text-green-400 font-bold border border-green-500/20 hover:bg-green-500/20 hover:shadow-lg hover:shadow-green-500/10 transition-all active:scale-[0.98]">
-              Easy
-            </button>
-          </div>
+      {/* Confidence buttons — shown when flipped */}
+      <div className={`transition-all duration-300 ${isFlipped ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"}`}>
+        <p className="text-center text-xs text-textMuted mb-4 font-medium">How well did you know this?</p>
+        <div className="grid grid-cols-3 gap-3">
+          <button
+            onClick={(e) => { e.stopPropagation(); handleConfidence(1); }}
+            className="flex flex-col items-center gap-1.5 py-4 px-3 rounded-xl bg-accent/10 border border-red-500/20 text-red-400 hover:bg-accent/20 hover:border-red-500/40 transition-all active:scale-[0.97] font-semibold text-sm"
+          >
+            <span className="text-xl">😰</span> Hard
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); handleConfidence(2); }}
+            className="flex flex-col items-center gap-1.5 py-4 px-3 rounded-xl bg-warning/10 border border-amber-500/20 text-amber-400 hover:bg-warning/20 hover:border-amber-500/40 transition-all active:scale-[0.97] font-semibold text-sm"
+          >
+            <span className="text-xl">🤔</span> Medium
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); handleConfidence(3); }}
+            className="flex flex-col items-center gap-1.5 py-4 px-3 rounded-xl bg-success/10 border border-green-500/20 text-green-400 hover:bg-success/20 hover:border-green-500/40 transition-all active:scale-[0.97] font-semibold text-sm"
+          >
+            <span className="text-xl">😊</span> Easy
+          </button>
         </div>
-      )}
+      </div>
     </div>
   );
 }

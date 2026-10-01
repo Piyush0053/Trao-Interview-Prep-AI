@@ -1,6 +1,9 @@
 "use client";
 import { useEffect, useState } from "react";
-import { ArrowRight, Plus, Calendar, FileText, ChevronRight, Trash2 } from "lucide-react";
+import {
+  ArrowRight, Plus, Calendar, FileText, Trash2, BrainCircuit,
+  BookOpen, CheckCircle2, Clock, TrendingUp, ChevronRight
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -12,8 +15,84 @@ type KitSummary = {
   schedule?: { days_available?: number };
 };
 
+function daysLeft(kit: KitSummary) {
+  if (!kit.schedule?.days_available) return null;
+  return Math.max(
+    0,
+    kit.schedule.days_available -
+      Math.floor((Date.now() - new Date(kit.createdAt).getTime()) / 86400000)
+  );
+}
+
+function statusMeta(status: string) {
+  switch (status) {
+    case "ready":      return { label: "Ready",      cls: "badge-cyan"  };
+    case "generating": return { label: "Generating", cls: "badge-amber" };
+    case "failed":     return { label: "Failed",     cls: "badge-red"   };
+    default:           return { label: status,       cls: "badge-gray"  };
+  }
+}
+
+function KitCard({ kit, onDelete }: { kit: KitSummary; onDelete: (e: React.MouseEvent, id: string) => void }) {
+  const left  = daysLeft(kit);
+  const meta  = statusMeta(kit.status);
+  const urgent = left !== null && left <= 2;
+
+  return (
+    <Link href={`/kits/${kit._id}`} className="block group">
+      <div className="card-gradient h-full flex flex-col transition-all duration-200 hover:-translate-y-0.5 hover:shadow-glow-cyan/10">
+        {/* Gradient header */}
+        <div className={`card-gradient-header ${kit.status === "ready" ? "card-gradient-day" : kit.status === "failed" ? "card-gradient-hard" : "card-gradient-medium"} flex items-center justify-between`}>
+          <div className="flex items-center gap-2">
+            <BrainCircuit className="w-3.5 h-3.5 text-white/80" />
+            <span className="truncate max-w-[160px]">{kit.source?.company || "Company"}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className={meta.cls}>{meta.label}</span>
+            <button
+              onClick={(e) => onDelete(e, kit._id)}
+              className="w-6 h-6 rounded-md bg-white/10 hover:bg-red-500/40 flex items-center justify-center text-white/70 hover:text-white transition-colors"
+              title="Delete kit"
+            >
+              <Trash2 className="w-3 h-3" />
+            </button>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="p-4 flex flex-col flex-grow">
+          <h3 className="font-display font-semibold text-textMain text-base mb-1 truncate group-hover:text-primary transition-colors">
+            {kit.source?.role || "New Kit"}
+          </h3>
+
+          <div className="flex items-center gap-3 mt-auto pt-3 border-t border-borderSubtle text-xs text-textMuted">
+            <span className="flex items-center gap-1">
+              <Calendar className="w-3 h-3" />
+              {new Date(kit.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+            </span>
+            {kit.schedule?.days_available && (
+              <span className="flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                {kit.schedule.days_available}d plan
+              </span>
+            )}
+            {left !== null && (
+              <span className={`ml-auto font-bold flex items-center gap-1 ${urgent ? "text-red-400" : "text-primary"}`}>
+                {left}d left
+              </span>
+            )}
+            {kit.status === "ready" && (
+              <ChevronRight className="w-3.5 h-3.5 text-textMuted group-hover:text-primary transition-colors ml-auto" />
+            )}
+          </div>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
 export default function Dashboard() {
-  const [kits, setKits] = useState([]);
+  const [kits, setKits] = useState<KitSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
@@ -26,116 +105,110 @@ export default function Dashboard() {
         }
         return res.json();
       })
-      .then(data => {
-        setKits(data);
-        setLoading(false);
-      })
+      .then(data => { setKits(data); setLoading(false); })
       .catch(() => setLoading(false));
   }, [router]);
 
   const handleDelete = async (e: React.MouseEvent, kitId: string) => {
     e.preventDefault();
-    if (!confirm("Are you sure you want to delete this kit? This action cannot be undone.")) return;
-    
+    if (!confirm("Delete this kit? This action cannot be undone.")) return;
     try {
-      const res = await fetch(`/api/kits/${kitId}`, { method: 'DELETE' });
-      if (res.ok) {
-        setKits(kits.filter((k: KitSummary) => k._id !== kitId));
-      } else {
-        throw new Error("Failed to delete kit");
-      }
-    } catch (err) {
-      console.error("Delete kit error:", err);
-      alert("An error occurred while deleting the kit.");
-    }
+      const res = await fetch(`/api/kits/${kitId}`, { method: "DELETE" });
+      if (res.ok) setKits(kits.filter(k => k._id !== kitId));
+      else throw new Error("Failed to delete");
+    } catch { alert("Failed to delete kit. Please try again."); }
   };
 
+  /* ── Derived stats ── */
+  const readyKits  = kits.filter(k => k.status === "ready");
+  const totalKits  = kits.length;
+  const nearestLeft = readyKits
+    .map(daysLeft)
+    .filter((d): d is number => d !== null)
+    .sort((a, b) => a - b)[0] ?? null;
+
+  const statsRow = [
+    { icon: FileText,    label: "Total Kits",      value: totalKits,                    cls: "text-primary" },
+    { icon: CheckCircle2,label: "Ready",            value: readyKits.length,             cls: "text-success" },
+    { icon: TrendingUp,  label: "Active",           value: kits.filter(k => k.status === "generating").length, cls: "text-warning" },
+    { icon: Clock,       label: "Nearest Deadline", value: nearestLeft !== null ? `${nearestLeft}d` : "—", cls: nearestLeft !== null && nearestLeft <= 2 ? "text-red-400" : "text-primary" },
+  ];
+
   return (
-    <div className="max-w-7xl mx-auto px-6 pb-20 pt-10 animate-fade-in relative z-10">
-      <div className="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-4">
+    <div className="max-w-screen-xl mx-auto px-4 sm:px-6 pb-20 pt-8 animate-fade-in relative z-10">
+
+      {/* ── Page header ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
         <div>
-          <h1 className="text-4xl font-bold mb-2">My Kits</h1>
-          <p className="text-textMuted text-lg">Manage your interview preparation</p>
+          <h1 className="font-display text-3xl font-bold text-textMain">My Kits</h1>
+          <p className="text-sm text-textSecondary mt-1">Manage your interview preparation kits</p>
         </div>
-        <Link href="/kits/new" className="btn-primary flex items-center justify-center gap-2">
-          <Plus className="w-5 h-5" /> Generate New Kit
+        <Link href="/kits/new" className="btn-primary gap-2 self-start sm:self-auto">
+          <Plus className="w-4 h-4" /> Generate New Kit
         </Link>
       </div>
 
+      {/* ── Analytics row ── */}
+      {!loading && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+          {statsRow.map(s => {
+            const Icon = s.icon;
+            return (
+              <div key={s.label} className="stat-card">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-textMuted">{s.label}</span>
+                  <Icon className={`w-3.5 h-3.5 ${s.cls}`} />
+                </div>
+                <span className={`text-2xl font-display font-bold ${s.cls}`}>{s.value}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── Kit grid ── */}
       {loading ? (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {[1, 2, 3].map(i => (
-            <div key={i} className="glass-card h-48 animate-pulse bg-white/5"></div>
+            <div key={i} className="skeleton h-44 rounded-xl" />
           ))}
         </div>
       ) : kits.length === 0 ? (
-        <div className="glass-panel text-center py-24 px-6 flex flex-col items-center">
-          <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mb-6 border border-borderStrong">
-            <FileText className="w-8 h-8 text-textMuted" />
+        /* Empty state */
+        <div className="panel text-center py-20 px-6 flex flex-col items-center">
+          <div className="w-14 h-14 rounded-xl bg-surfaceHighlight flex items-center justify-center mb-5 border border-borderStrong">
+            <BookOpen className="w-7 h-7 text-textMuted" />
           </div>
-          <h2 className="text-2xl font-semibold mb-2">No kits yet</h2>
-          <p className="text-textMuted mb-8 max-w-md">
-            You haven&apos;t generated any interview preparation kits yet. Start by pasting a job description.
+          <h2 className="font-display text-xl font-bold text-textMain mb-2">No kits yet</h2>
+          <p className="text-sm text-textSecondary mb-8 max-w-sm">
+            Generate your first interview prep kit by pasting a job description and company URL.
           </p>
-          <Link href="/kits/new" className="btn-primary flex items-center gap-2">
+          <Link href="/kits/new" className="btn-primary gap-2">
             Create First Kit <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
       ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {kits.map((kit: KitSummary) => (
-            <Link href={`/kits/${kit._id}`} key={kit._id} className="block group">
-              <div className="glass-card p-6 h-full flex flex-col relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-3xl -mr-10 -mt-10 group-hover:bg-primary/20 transition-colors pointer-events-none" />
+        <>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {kits.map(kit => (
+              <KitCard key={kit._id} kit={kit} onDelete={handleDelete} />
+            ))}
 
-                <div className="flex justify-between items-start mb-6">
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/5 border border-white/10 text-xs font-medium text-textMuted capitalize">
-                    {kit.status}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button 
-                      onClick={(e) => handleDelete(e, kit._id)}
-                      className="relative z-10 w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center text-red-400 hover:bg-red-500 hover:text-white transition-colors"
-                      title="Delete Kit"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                    {kit.status === 'ready' && (
-                      <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-textMuted group-hover:bg-primary group-hover:text-white transition-colors">
-                        <ChevronRight className="w-4 h-4" />
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <h3 className="text-xl font-bold mb-2 truncate pr-6 group-hover:text-primary transition-colors">
-                  {kit.source?.role || "New Kit"}
-                </h3>
-                <p className="text-textMuted text-sm mb-6 flex-grow">
-                  {kit.source?.company || "Unknown Company"}
-                </p>
-
-                <div className="flex items-center gap-4 text-xs text-textMuted pt-4 border-t border-borderSubtle">
-                  <span className="flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5" />
-                    {new Date(kit.createdAt).toLocaleDateString()}
-                  </span>
-                  {kit.schedule?.days_available && (
-                    <span className="flex items-center gap-1.5">
-                      <FileText className="w-3.5 h-3.5" />
-                      {kit.schedule.days_available} days plan
-                    </span>
-                  )}
-                  {kit.schedule?.days_available && (
-                    <span className={`flex items-center gap-1.5 ml-auto font-bold ${Math.max(0, kit.schedule.days_available - Math.floor((new Date().getTime() - new Date(kit.createdAt).getTime()) / (1000 * 60 * 60 * 24))) <= 2 ? 'text-red-400' : 'text-primary'}`}>
-                      {Math.max(0, kit.schedule.days_available - Math.floor((new Date().getTime() - new Date(kit.createdAt).getTime()) / (1000 * 60 * 60 * 24)))} days left
-                    </span>
-                  )}
-                </div>
+            {/* Quick-create card */}
+            <Link
+              href="/kits/new"
+              className="group flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-borderStrong hover:border-primary/50 hover:bg-primary/5 transition-all duration-200 min-h-[140px] p-6 text-center"
+            >
+              <div className="w-10 h-10 rounded-lg bg-surfaceHighlight group-hover:bg-primary/15 flex items-center justify-center transition-colors">
+                <Plus className="w-5 h-5 text-textMuted group-hover:text-primary transition-colors" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-textSecondary group-hover:text-primary transition-colors">New Kit</p>
+                <p className="text-xs text-textMuted mt-0.5">Paste a job description</p>
               </div>
             </Link>
-          ))}
-        </div>
+          </div>
+        </>
       )}
     </div>
   );
