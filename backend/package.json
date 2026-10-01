@@ -1,0 +1,32 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest",
+    "evaluate": "node bin/evaluate.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@google/genai": "^2.22.0",
+    "bcrypt": "^6.0.0",
+    "cheerio": "^1.2.0",
+    "connect-mongo": "^6.0.0",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "express-session": "^1.19.0",
+    "mongoose": "^9.10.0",
+    "robots-parser": "^3.0.1",
+    "undici": "^8.10.2",
+    "uuid": "^14.0.2",
+    "zod": "^4.6.2",
+    "zod-to-json-schema": "^3.25.2"
+  },
+  "devDependencies": {
+    "jest": "^30.5.1"
+  }
+}
