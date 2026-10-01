@@ -22,8 +22,14 @@ export default function Register() {
         body: JSON.stringify({ email, password })
       });
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Registration failed");
+        let msg = "Registration failed";
+        try {
+          const data = await res.json();
+          msg = data.error || msg;
+        } catch {
+          msg = `Unable to connect to backend server (${res.status}). Please ensure the backend is running on port 8099.`;
+        }
+        throw new Error(msg);
       }
       router.push("/dashboard");
     } catch (err: unknown) {

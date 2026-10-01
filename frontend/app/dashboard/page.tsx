@@ -40,7 +40,7 @@ function KitCard({ kit, onDelete }: { kit: KitSummary; onDelete: (e: React.Mouse
 
   return (
     <Link href={`/kits/${kit._id}`} className="block group">
-      <div className="card-gradient h-full flex flex-col transition-all duration-200 hover:-translate-y-0.5 hover:shadow-glow-cyan/10">
+      <div className="card-gradient h-full flex flex-col transition-all duration-200 hover:-translate-y-0.5 hover:shadow-glow-cyan">
         {/* Gradient header */}
         <div className={`card-gradient-header ${kit.status === "ready" ? "card-gradient-day" : kit.status === "failed" ? "card-gradient-hard" : "card-gradient-medium"} flex items-center justify-between`}>
           <div className="flex items-center gap-2">

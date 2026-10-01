@@ -197,7 +197,14 @@ export default function NewKit() {
             <code className="text-primary bg-surfaceHighlight px-1 py-0.5 rounded text-[10px]">
               {`{ jd, company_url, days }`}
             </code>{" "}
-            objects to kick off a batch of kits at once. Each will be processed sequentially.
+            objects to kick off a batch of kits at once. Each will be processed sequentially.{" "}
+            <a
+              href="/cases.json"
+              download="cases.json"
+              className="text-primary hover:underline inline-flex items-center gap-1 font-medium mt-1 block sm:inline"
+            >
+              Download sample JSON template &rarr;
+            </a>
           </p>
         </div>
       </div>
