@@ -289,9 +289,9 @@ flowchart TD
 
     STEP2 --> STEP3["Step 3: buildCompanyBrief<br/>───────────────────<br/>LLM summarises scraped pages<br/>→ summary, what_they_do, sources"]
 
-    STEP3 --> STEP4["Step 4: findInterviewProcessDiscussion<br/>───────────────────<br/>DuckDuckGo search:<br/>&quot;[Company] interview process questions&quot;<br/>→ Parse search snippets<br/>→ Extract interview context"]
+    STEP3 --> STEP4["Step 4: findInterviewProcessDiscussion<br/>───────────────────<br/>DuckDuckGo search:<br/>Company interview process questions<br/>→ Parse search snippets<br/>→ Extract interview context"]
 
-    STEP4 --> STEP5["Step 5: generateQuestions<br/>───────────────────<br/>For EACH requirement:<br/>→ LLM generates targeted Q&A<br/>→ 1.5s delay between calls<br/>→ Attach _meta: { pinned: false }"]
+    STEP4 --> STEP5["Step 5: generateQuestions<br/>───────────────────<br/>For EACH requirement:<br/>→ LLM generates targeted Q and A<br/>→ 1.5s delay between calls<br/>→ Attach _meta pinned: false"]
 
     STEP5 --> STEP6{"Step 6: checkCoverage<br/>───────────────────<br/>Diff must-have requirements<br/>vs generated questions"}
 
